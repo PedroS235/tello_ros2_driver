@@ -1,29 +1,28 @@
+import time
 from rclpy.node import Node
-from tellopy import Tello
 import threading
 import cv2
 import numpy as np
 import av
 from cv_bridge import CvBridge
+from tellopy import Tello
 from tello_driver import connect_to_wifi_device as ctwd
-import time
 
 # ROS messages
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import Twist
 from std_msgs.msg import Header
 from tello_msgs.msg import FlightData, FlipControl
 
 
 class TelloRosWrapper(Node):
-    # Constants
-    CURRENT_BATTERY_PERCENTAGE_TIMER_INTERVAL = 10  # (s)
-
+    # Set inverval that will be printing the drone's battery
+    _battery_percentage_timer_interval = 5  # seconds
     _frame_skip = 300
 
     tello_ssid = None
     tello_pw = None
-    current_battery_percentage = -1
+    current_battery_percentage = 0
 
     # Publishers
     _camera_image_publisher = None
@@ -83,7 +82,7 @@ class TelloRosWrapper(Node):
                              self._flight_data_callback)
 
         self._velocity_command_subscriber = self.create_subscription(
-            TwistStamped, self.velocity_command_topic_name,
+            Twist, self.velocity_command_topic_name,
             self.command_velocity_callback, 1)
 
         self._land_subscriber = self.create_subscription(
@@ -98,7 +97,7 @@ class TelloRosWrapper(Node):
     def _init_timers(self):
         print("[INFO] - Initializing the timers.")
         self._current_battery_percentage_timer = self.create_timer(
-            self.CURRENT_BATTERY_PERCENTAGE_TIMER_INTERVAL,
+            self._battery_percentage_timer_interval,
             self._current_battery_percentage_callback)
 
     def _start_camera_image_thread(self):
@@ -110,11 +109,11 @@ class TelloRosWrapper(Node):
     # -------------
     # - Callbacks -
     # -------------
-    def command_velocity_callback(self, msg: TwistStamped):
-        self.tello.set_pitch(msg.twist.linear.x)  # linear X
-        self.tello.set_roll(-msg.twist.linear.y)  # linear Y
-        self.tello.set_throttle(msg.twist.linear.z)  # linear Z
-        self.tello.set_yaw(msg.twist.angular.z)  # angular Z
+    def command_velocity_callback(self, msg: Twist):
+        self.tello.set_pitch(msg.linear.x)  # linear X
+        self.tello.set_roll(-msg.linear.y)  # linear Y
+        self.tello.set_throttle(msg.linear.z)  # linear Z
+        self.tello.set_yaw(msg.angular.z)  # angular Z
 
     def _land_callback(self, msg: Header):
         msg  # remove linter error
@@ -193,7 +192,7 @@ class TelloRosWrapper(Node):
 
     def _current_battery_percentage_callback(self):
         print(
-            f"[info] [Tello_driver] - Drone's battery percentage is {self.current_battery_percentage}%"
+            f"[INFO] - Battery percentage: {self.current_battery_percentage}%"
         )
 
     def _flip_control_callback(self, msg: FlipControl):
@@ -207,12 +206,10 @@ class TelloRosWrapper(Node):
             self.tello.flip_left()
 
     def _camera_image_callback(self):
-        # get video stream, open with PyAV
         video_stream = self.tello.get_video_stream()
-        time.sleep(5)
         container = av.open(video_stream)
 
-        print("[info] [Tello_driver] - video stream is starting")
+        print("[INFO] - video stream is starting")
 
         for frame in container.decode(video=0):
             if self._frame_skip > 0:
