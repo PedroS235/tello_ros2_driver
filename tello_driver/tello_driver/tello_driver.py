@@ -40,7 +40,7 @@ class TelloRosWrapper(Node):
     # Topics
     image_topic_name = "/tello/camera/image_raw"
     flight_data_topic_name = "/tello/flight_data"
-    velocity_command_topic_name = "/tello/cmd_vel_stamped"
+    velocity_command_topic_name = "/tello/cmd_vel"
     land_topic_name = "/tello/land"
     takeoff_topic_name = "/tello/takeoff"
     flip_control_topic_name = "/tello/flip"
@@ -72,38 +72,41 @@ class TelloRosWrapper(Node):
     def _init_publisher(self):
         print("[INFO] - Initializing the publishers.")
         self._camera_image_publisher = self.create_publisher(
-            Image, self.image_topic_name, 1)
+            Image, self.image_topic_name, 1
+        )
         self._flight_data_publisher = self.create_publisher(
-            FlightData, self.flight_data_topic_name, 10)
+            FlightData, self.flight_data_topic_name, 10
+        )
 
     def _init_subscribers(self):
         print("[INFO] - Initializing the subscribers.")
-        self.tello.subscribe(self.tello.EVENT_FLIGHT_DATA,
-                             self._flight_data_callback)
+        self.tello.subscribe(self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback)
 
         self._velocity_command_subscriber = self.create_subscription(
-            Twist, self.velocity_command_topic_name,
-            self.command_velocity_callback, 1)
+            Twist, self.velocity_command_topic_name, self.command_velocity_callback, 1
+        )
 
         self._land_subscriber = self.create_subscription(
-            Header, self.land_topic_name, self._land_callback, 1)
+            Header, self.land_topic_name, self._land_callback, 1
+        )
         self._takeoff_subscriber = self.create_subscription(
-            Header, self.takeoff_topic_name, self._takeoff_callback, 1)
+            Header, self.takeoff_topic_name, self._takeoff_callback, 1
+        )
 
         self._flip_control_subscriber = self.create_subscription(
-            FlipControl, self.flip_control_topic_name,
-            self._flip_control_callback, 1)
+            FlipControl, self.flip_control_topic_name, self._flip_control_callback, 1
+        )
 
     def _init_timers(self):
         print("[INFO] - Initializing the timers.")
         self._current_battery_percentage_timer = self.create_timer(
             self._battery_percentage_timer_interval,
-            self._current_battery_percentage_callback)
+            self._current_battery_percentage_callback,
+        )
 
     def _start_camera_image_thread(self):
         self._stop_request = threading.Event()
-        self._video_thread = threading.Thread(
-            target=self._camera_image_callback)
+        self._video_thread = threading.Thread(target=self._camera_image_callback)
         self._video_thread.start()
 
     # -------------
@@ -191,9 +194,7 @@ class TelloRosWrapper(Node):
         self._flight_data_publisher.publish(flight_data)
 
     def _current_battery_percentage_callback(self):
-        print(
-            f"[INFO] - Battery percentage: {self.current_battery_percentage}%"
-        )
+        print(f"[INFO] - Battery percentage: {self.current_battery_percentage}%")
 
     def _flip_control_callback(self, msg: FlipControl):
         if msg.flip_forward:
@@ -223,8 +224,7 @@ class TelloRosWrapper(Node):
             # original 960x720
 
             # Reduced image size to have less delay
-            image = cv2.resize(image, (480, 360),
-                               interpolation=cv2.INTER_LINEAR)
+            image = cv2.resize(image, (480, 360), interpolation=cv2.INTER_LINEAR)
 
             # convert OpenCV image => ROS Image message
             image = self._cv_bridge.cv2_to_imgmsg(image, "rgb8")
@@ -244,6 +244,7 @@ class TelloRosWrapper(Node):
 
         self.tello.connect()
         from tellopy._internal import error
+
         try:
             self.tello.wait_for_connection(5)
         except error.TelloError:
