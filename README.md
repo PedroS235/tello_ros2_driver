@@ -13,6 +13,4 @@ from the drone, such as the battery percentage, is also being published to a top
 
 ## What can you expect from this package
 
-For the future I plan first of all to create a keyboard controller so that one can
-fly the drone via the keyboard. In addition, I plan to integrate the rest of tellopy
-features into this package.
+For the future, I plan to integrate the rest of tellopy features into this package.
