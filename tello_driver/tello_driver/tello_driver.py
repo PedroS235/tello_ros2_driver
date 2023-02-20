@@ -80,10 +80,15 @@ class TelloRosWrapper(Node):
 
     def _init_subscribers(self):
         print("[INFO] - Initializing the subscribers.")
-        self.tello.subscribe(self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback)
+        self.tello.subscribe(
+            self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback
+        )
 
         self._velocity_command_subscriber = self.create_subscription(
-            Twist, self.velocity_command_topic_name, self.command_velocity_callback, 1
+            Twist,
+            self.velocity_command_topic_name,
+            self.command_velocity_callback,
+            1,
         )
 
         self._land_subscriber = self.create_subscription(
@@ -94,7 +99,10 @@ class TelloRosWrapper(Node):
         )
 
         self._flip_control_subscriber = self.create_subscription(
-            FlipControl, self.flip_control_topic_name, self._flip_control_callback, 1
+            FlipControl,
+            self.flip_control_topic_name,
+            self._flip_control_callback,
+            1,
         )
 
     def _init_timers(self):
@@ -106,7 +114,9 @@ class TelloRosWrapper(Node):
 
     def _start_camera_image_thread(self):
         self._stop_request = threading.Event()
-        self._video_thread = threading.Thread(target=self._camera_image_callback)
+        self._video_thread = threading.Thread(
+            target=self._camera_image_callback
+        )
         self._video_thread.start()
 
     # -------------
@@ -116,7 +126,7 @@ class TelloRosWrapper(Node):
         self.tello.set_pitch(msg.linear.x)  # linear X
         self.tello.set_roll(-msg.linear.y)  # linear Y
         self.tello.set_throttle(msg.linear.z)  # linear Z
-        self.tello.set_yaw(msg.angular.z)  # angular Z
+        self.tello.set_yaw(-msg.angular.z)  # angular Z
 
     def _land_callback(self, msg: Header):
         msg  # remove linter error
@@ -125,6 +135,24 @@ class TelloRosWrapper(Node):
     def _takeoff_callback(self, msg: Header):
         msg  # remove linter error
         self.tello.takeoff()
+
+    def _flip_control_callback(self, msg: FlipControl):
+        if msg.flip_forward:
+            self.tello.flip_forward()
+        elif msg.flip_backward:
+            self.tello.flip_back()
+        elif msg.flip_right:
+            self.tello.flip_right()
+        elif msg.flip_left:
+            self.tello.flip_left()
+        elif msg.flip_forward_left:
+            self.tello.flip_forwardleft()
+        elif msg.flip_forward_right:
+            self.tello.flip_forwardright()
+        elif msg.flip_back_left:
+            self.tello.flip_backleft()
+        elif msg.flip_back_right:
+            self.tello.flip_backward_right()
 
     def _flight_data_callback(self, event, sender, data):
         flight_data = FlightData()
@@ -141,7 +169,9 @@ class TelloRosWrapper(Node):
         # - States
         flight_data.battery_state = data.battery_state
         flight_data.camera_state = data.camera_state
-        flight_data.electrical_machinery_state = data.electrical_machinery_state
+        flight_data.electrical_machinery_state = (
+            data.electrical_machinery_state
+        )
         flight_data.down_visual_state = data.down_visual_state
         flight_data.gravity_state = data.gravity_state
         flight_data.imu_calibration_state = data.imu_calibration_state
@@ -173,7 +203,7 @@ class TelloRosWrapper(Node):
         flight_data.height = data.height
         flight_data.light_strength = data.light_strength
         flight_data.north_speed = data.north_speed
-        flight_data.temperature_height = data.temperature_height
+        flight_data.temperature_high = data.temperature_height
 
         # =========================================================================
 
@@ -194,17 +224,9 @@ class TelloRosWrapper(Node):
         self._flight_data_publisher.publish(flight_data)
 
     def _current_battery_percentage_callback(self):
-        print(f"[INFO] - Battery percentage: {self.current_battery_percentage}%")
-
-    def _flip_control_callback(self, msg: FlipControl):
-        if msg.flip_forward:
-            self.tello.flip_forward()
-        elif msg.flip_backward:
-            self.tello.flip_back()
-        elif msg.flip_right:
-            self.tello.flip_right()
-        elif msg.flip_left:
-            self.tello.flip_left()
+        print(
+            f"[INFO] - Battery percentage: {self.current_battery_percentage}%"
+        )
 
     def _camera_image_callback(self):
         video_stream = self.tello.get_video_stream()
@@ -224,7 +246,9 @@ class TelloRosWrapper(Node):
             # original 960x720
 
             # Reduced image size to have less delay
-            image = cv2.resize(image, (480, 360), interpolation=cv2.INTER_LINEAR)
+            image = cv2.resize(
+                image, (480, 360), interpolation=cv2.INTER_LINEAR
+            )
 
             # convert OpenCV image => ROS Image message
             image = self._cv_bridge.cv2_to_imgmsg(image, "rgb8")
@@ -238,7 +262,9 @@ class TelloRosWrapper(Node):
     def _connect_to_tello_network(self):
         print("[INFO] - Connecting to drone")
         if self._auto_connect_to_wifi:
-            if not ctwd.connect_device(self.tello_ssid, self.tello_pw, verbose=False):
+            if not ctwd.connect_device(
+                self.tello_ssid, self.tello_pw, verbose=False
+            ):
                 print("[ERROR] - Connection to drone unsuccessful!")
                 self.signal_shutdown = True
 
