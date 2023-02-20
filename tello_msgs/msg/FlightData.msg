@@ -49,7 +49,7 @@ int16 ground_speed
 int16 height
 int16 light_strength
 int16 north_speed
-int16 temperature_height
+int16 temperature_high
 
 # =========================================================================
 
