@@ -2,7 +2,7 @@
 import rclpy
 from tello_driver.tello_driver import TelloRosWrapper
 
-NODE_NAME = "Tello_Driver"
+NODE_NAME = "tello_driver"
 
 
 def main(args=None):
