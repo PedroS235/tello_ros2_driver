@@ -17,10 +17,13 @@ The second message type is `FlipControl.msg` which is used to signal the drone t
 
 ### Subscribed Topics
 
-- `/tello/takeoff`(std_msgs/Header): If any message is sent to this topic, even emtpy, will trigger the drone to takeoff.
-- `/tello/land`(std_msgs/Header): If any message is sent to this topic, even emtpy, will trigger the drone toland.
-- `/tello/cmd_vel`(std_msgs/Twist): Command velocity commands sent to this topic will make the drone move if it is in the air.
-- `/tello/flip`(tello_msgs/FlipControl): If any of the flip directions are set to true, it will make the drone flip on that same direction.
+- `/takeoff`(std_msgs/Empty): If any message is sent to this topic, even emtpy, will trigger the drone to takeoff.
+- `/land`(std_msgs/Empty): If any message is sent to this topic, even emtpy, will trigger the drone toland.
+- `/cmd_vel`(std_msgs/Twist): Command velocity commands sent to this topic will make the drone move if it is in the air.
+- `/flip`(tello_msgs/FlipControl): If any of the flip directions are set to true, it will make the drone flip on that same direction.
+- `/palm_land`(std_msgs/Empty): Activates the palm_land feature. (Not tested)
+- `/throw_and_go`(std_msgs/Empty): Activates the throw_and_go feature. (Not implemented yet)
+- `/set_att_limit`(std_msgs/Int32): Sets the altitude limit for the drone. (Not implemented yet)
 
 ### Published Topics
 
