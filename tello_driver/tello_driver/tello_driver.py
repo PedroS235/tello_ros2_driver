@@ -11,12 +11,12 @@ from tello_driver import connect_to_wifi_device as ctwd
 # ROS messages
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Header
+from std_msgs.msg import Empty, Int32
 from tello_msgs.msg import FlightData, FlipControl
 
 
 class TelloRosWrapper(Node):
-    # Set inverval that will be printing the drone's battery
+    # Set inverval that will be self.get_logger().infoing the drone's battery
     _battery_percentage_timer_interval = 5  # seconds
     _frame_skip = 300
 
@@ -33,17 +33,23 @@ class TelloRosWrapper(Node):
     _land_subscriber = None
     _takeoff_subscriber = None
     _flip_control_subscriber = None
+    _throw_and_go_subscriber = None
+    _palm_land_subscriber = None
+    _set_att_limit_subscriber = None
 
     # Timers
     _current_battery_percentage_timer = None
 
     # Topics
-    image_topic_name = "/tello/camera/image_raw"
-    flight_data_topic_name = "/tello/flight_data"
-    velocity_command_topic_name = "/tello/cmd_vel"
-    land_topic_name = "/tello/land"
-    takeoff_topic_name = "/tello/takeoff"
-    flip_control_topic_name = "/tello/flip"
+    image_topic_name = "/camera/image_raw"
+    flight_data_topic_name = "/flight_data"
+    velocity_command_topic_name = "/cmd_vel"
+    land_topic_name = "/land"
+    takeoff_topic_name = "/takeoff"
+    flip_control_topic_name = "/flip"
+    throw_and_go_topic_name = "/throw_and_go"
+    palm_land_topic_name = "/palm_land"
+    set_att_limit_topic_name = "/set_att_limit"
 
     # Flags
     _auto_connect_to_wifi = False
@@ -59,7 +65,10 @@ class TelloRosWrapper(Node):
         self.tello.set_loglevel(self.tello.LOG_WARN)
 
     def begin(self):
-        print("[INFO] - Initiating the Node...")
+        self.get_logger().info("Initiating the Node...")
+
+        self.read_parameters()
+
         self._connect_to_tello_network()
 
         self._init_publisher()
@@ -67,10 +76,10 @@ class TelloRosWrapper(Node):
         self._init_timers()
 
         self._start_camera_image_thread()
-        print("[INFO] - Node is ready!")
+        self.get_logger().info("Node is ready!")
 
     def _init_publisher(self):
-        print("[INFO] - Initializing the publishers.")
+        self.get_logger().info("Initializing the publishers.")
         self._camera_image_publisher = self.create_publisher(
             Image, self.image_topic_name, 1
         )
@@ -79,7 +88,7 @@ class TelloRosWrapper(Node):
         )
 
     def _init_subscribers(self):
-        print("[INFO] - Initializing the subscribers.")
+        self.get_logger().info("Initializing the subscribers.")
         self.tello.subscribe(
             self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback
         )
@@ -92,10 +101,10 @@ class TelloRosWrapper(Node):
         )
 
         self._land_subscriber = self.create_subscription(
-            Header, self.land_topic_name, self._land_callback, 1
+            Empty, self.land_topic_name, self._land_callback, 1
         )
         self._takeoff_subscriber = self.create_subscription(
-            Header, self.takeoff_topic_name, self._takeoff_callback, 1
+            Empty, self.takeoff_topic_name, self._takeoff_callback, 1
         )
 
         self._flip_control_subscriber = self.create_subscription(
@@ -104,13 +113,83 @@ class TelloRosWrapper(Node):
             self._flip_control_callback,
             1,
         )
+        self._throw_and_go_subscriber = self.subscriptions(
+            Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
+        )
+        self._palm_land_subscriber = self.subscriptions(
+            Empty, self.palm_land_topic_name, self._palm_land_callback, 1
+        )
+        self._set_att_limit_subscriber = self.subscriptions(
+            Int32,
+            self.set_att_limit_topic_name,
+            self._set_att_limit_callback,
+            1,
+        )
 
     def _init_timers(self):
-        print("[INFO] - Initializing the timers.")
+        self.get_logger().info("Initializing the timers.")
         self._current_battery_percentage_timer = self.create_timer(
             self._battery_percentage_timer_interval,
             self._current_battery_percentage_callback,
         )
+
+    def read_parameters(self):
+        self.get_logger().info("Reading parameters...")
+
+        self.declare_parameter("image_topic_name", "/camera/image_raw")
+        self.declare_parameter("flight_data_topic_name", "flight_data")
+        self.declare_parameter("velocity_command_topic_name", "/cmd_vel")
+        self.declare_parameter("land_topic_name", "/land")
+        self.declare_parameter("takeoff_topic_name", "/takeoff")
+        self.declare_parameter("flip_control_topic_name", "/flip")
+        self.declare_parameter("auto_wifi_connection", False)
+        self.declare_parameter("tello_ssid", "tello01")
+        self.declare_parameter("tello_pw", "")
+
+        self.image_topic_name = (
+            self.get_parameter("image_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self.flight_data_topic_name = (
+            self.get_parameter("flight_data_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self.velocity_command_topic_name = (
+            self.get_parameter("velocity_command_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self.land_topic_name = (
+            self.get_parameter("land_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self.takeoff_topic_name = (
+            self.get_parameter("takeoff_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self.flip_control_topic_name = (
+            self.get_parameter("flip_control_topic_name")
+            .get_parameter_value()
+            .string_value
+        )
+        self._auto_connect_to_wifi = (
+            self.get_parameter("auto_wifi_connection")
+            .get_parameter_value()
+            .bool_value
+        )
+
+        self.tello_ssid = (
+            self.get_parameter("tello_ssid").get_parameter_value().string_value
+        )
+        self.tello_pw = (
+            self.get_parameter("tello_pw").get_parameter_value().string_value
+        )
+
+        self.get_logger().info("Finished reading parameters!")
 
     def _start_camera_image_thread(self):
         self._stop_request = threading.Event()
@@ -128,13 +207,23 @@ class TelloRosWrapper(Node):
         self.tello.set_throttle(msg.linear.z)  # linear Z
         self.tello.set_yaw(-msg.angular.z)  # angular Z
 
-    def _land_callback(self, msg: Header):
+    def _land_callback(self, msg: Empty):
         msg  # remove linter error
         self.tello.land()
 
-    def _takeoff_callback(self, msg: Header):
+    def _takeoff_callback(self, msg: Empty):
         msg  # remove linter error
         self.tello.takeoff()
+
+    def _palm_land_callback(self, msg: Empty):
+        msg  # remove linter error
+        self.tello.palm_land()
+
+    def _set_att_limit_callback(self, msg: Int32):
+        pass
+
+    def _throw_and_go_callback(self, msg: Empty):
+        pass
 
     def _flip_control_callback(self, msg: FlipControl):
         if msg.flip_forward:
@@ -224,15 +313,15 @@ class TelloRosWrapper(Node):
         self._flight_data_publisher.publish(flight_data)
 
     def _current_battery_percentage_callback(self):
-        print(
-            f"[INFO] - Battery percentage: {self.current_battery_percentage}%"
+        self.get_logger().info(
+            f"Battery percentage: {self.current_battery_percentage}%"
         )
 
     def _camera_image_callback(self):
         video_stream = self.tello.get_video_stream()
         container = av.open(video_stream)
 
-        print("[INFO] - video stream is starting")
+        self.get_logger().info("video stream is starting")
 
         for frame in container.decode(video=0):
             if self._frame_skip > 0:
@@ -247,7 +336,7 @@ class TelloRosWrapper(Node):
 
             # Reduced image size to have less delay
             image = cv2.resize(
-                image, (480, 360), interpolation=cv2.INTER_LINEAR
+                image, (960, 720), interpolation=cv2.INTER_LINEAR
             )
 
             # convert OpenCV image => ROS Image message
@@ -260,12 +349,12 @@ class TelloRosWrapper(Node):
                 return
 
     def _connect_to_tello_network(self):
-        print("[INFO] - Connecting to drone")
+        self.get_logger().info("Connecting to drone")
         if self._auto_connect_to_wifi:
             if not ctwd.connect_device(
                 self.tello_ssid, self.tello_pw, verbose=False
             ):
-                print("[ERROR] - Connection to drone unsuccessful!")
+                self.get_logger().error("Connection to drone unsuccessful!")
                 self.signal_shutdown = True
 
         self.tello.connect()
@@ -274,23 +363,23 @@ class TelloRosWrapper(Node):
         try:
             self.tello.wait_for_connection(5)
         except error.TelloError:
-            print("[ERROR] - Connection to drone unsuccessful!")
+            self.get_logger().error("Connection to drone unsuccessful!")
             self.signal_shutdown = True
             return
 
-        print("[INFO] - Connection to drone successfull")
+        self.get_logger().info(" to drone successfull")
 
     def shutdown_rountine(self):
-        print("[INFO] - Shutdown routine started")
-        print("[INFO] - Landing...")
+        self.get_logger().info("Shutdown routine started")
+        self.get_logger().info("Landing...")
         self.tello.land()
 
-        print("[INFO] - Stoping publishing the camera image.")
+        self.get_logger().info("Stoping publishing the camera image.")
         self._stop_request.set()
         self._video_thread.join(timeout=2)
 
         time.sleep(2)
 
-        print("[INFO] - Stoping the communication between the drone")
+        self.get_logger().info("Stoping the communication between the drone")
         self.tello.quit()
-        print("[INFO] - Shutdown routine completed!")
+        self.get_logger().info("Shutdown routine completed!")
