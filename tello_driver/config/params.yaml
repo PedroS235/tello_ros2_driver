@@ -8,5 +8,6 @@ tello_driver:
     takeoff_topic_name: '/takeoff'
     flip_control_topic_name: '/flip'
 
-    # Flags
-  auto_wifi_connection: false
+    auto_wifi_connection: False
+    tello_ssid: 'tello01'
+    tello_pw: ''
