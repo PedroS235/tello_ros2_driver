@@ -1,0 +1,5 @@
+repositories:
+    utils/tellopy:
+        type: git
+        url: git@github.com:hanyazou/TelloPy.git
+        version: develop-0.7.0
