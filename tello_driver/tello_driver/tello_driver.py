@@ -113,18 +113,18 @@ class TelloRosWrapper(Node):
             self._flip_control_callback,
             1,
         )
-        # self._throw_and_go_subscriber = self.subscriptions(
-        #     Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
-        # )
-        # self._palm_land_subscriber = self.subscriptions(
-        #     Empty, self.palm_land_topic_name, self._palm_land_callback, 1
-        # )
-        # self._set_att_limit_subscriber = self.subscriptions(
-        #     Int32,
-        #     self.set_att_limit_topic_name,
-        #     self._set_att_limit_callback,
-        #     1,
-        # )
+        self._throw_and_go_subscriber = self.create_subscription(
+            Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
+        )
+        self._palm_land_subscriber = self.create_subscription(
+            Empty, self.palm_land_topic_name, self._palm_land_callback, 1
+        )
+        self._set_att_limit_subscriber = self.create_subscription(
+            Int32,
+            self.set_att_limit_topic_name,
+            self._set_att_limit_callback,
+            1,
+        )
 
     def _init_timers(self):
         self.get_logger().info("Initializing the timers.")
@@ -220,10 +220,11 @@ class TelloRosWrapper(Node):
         self.tello.palm_land()
 
     def _set_att_limit_callback(self, msg: Int32):
-        pass
+        self.tello.set_att_limit(msg.data)
 
     def _throw_and_go_callback(self, msg: Empty):
-        pass
+        msg  # remove linter error
+        self.tello.throw_and_go()
 
     def _flip_control_callback(self, msg: FlipControl):
         if msg.flip_forward:
