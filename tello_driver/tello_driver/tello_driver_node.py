@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from tello_driver.tello_driver import TelloRosWrapper
+import atexit
 
 NODE_NAME = "tello_driver"
 
@@ -11,10 +12,11 @@ def main(args=None):
     # - Start the node
     tello_ros_wrapper = TelloRosWrapper(NODE_NAME)
     tello_ros_wrapper.begin()
-    while not tello_ros_wrapper.signal_shutdown:
-        rclpy.spin_once(tello_ros_wrapper)
-    tello_ros_wrapper.shutdown_rountine()
-    tello_ros_wrapper.destroy_node()
+
+    atexit.register(tello_ros_wrapper.shutdown_rountine)
+
+    rclpy.spin(tello_ros_wrapper)
+
     rclpy.shutdown()
 
 
