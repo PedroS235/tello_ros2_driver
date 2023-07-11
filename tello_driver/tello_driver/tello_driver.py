@@ -81,7 +81,7 @@ class TelloRosWrapper(Node):
     def _init_publisher(self):
         self.get_logger().info("Initializing the publishers.")
         self._camera_image_publisher = self.create_publisher(
-            Image, self.image_topic_name, 1
+            Image, self.image_topic_name, 10
         )
         self._flight_data_publisher = self.create_publisher(
             FlightData, self.flight_data_topic_name, 10
@@ -113,18 +113,18 @@ class TelloRosWrapper(Node):
             self._flip_control_callback,
             1,
         )
-        self._throw_and_go_subscriber = self.subscriptions(
-            Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
-        )
-        self._palm_land_subscriber = self.subscriptions(
-            Empty, self.palm_land_topic_name, self._palm_land_callback, 1
-        )
-        self._set_att_limit_subscriber = self.subscriptions(
-            Int32,
-            self.set_att_limit_topic_name,
-            self._set_att_limit_callback,
-            1,
-        )
+        # self._throw_and_go_subscriber = self.subscriptions(
+        #     Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
+        # )
+        # self._palm_land_subscriber = self.subscriptions(
+        #     Empty, self.palm_land_topic_name, self._palm_land_callback, 1
+        # )
+        # self._set_att_limit_subscriber = self.subscriptions(
+        #     Int32,
+        #     self.set_att_limit_topic_name,
+        #     self._set_att_limit_callback,
+        #     1,
+        # )
 
     def _init_timers(self):
         self.get_logger().info("Initializing the timers.")
