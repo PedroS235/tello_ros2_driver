@@ -6,7 +6,8 @@ This is a simple ROS package that enables one to use ROS2 to command a DJI
 Tello drone using command velocity. This package makes use of the python library `tellopy` and thus creating
 a bridge between ROS and `tellopy`.
 
-> **Make sure to install tellopy from source, as the current version on pip is outdated.**
+> **Make sure to install tellopy from source, as the current version on pip is outdated.
+> You can use `install_tellopy.sh` script which will install it.**
 
 ## Ros Messages
 
