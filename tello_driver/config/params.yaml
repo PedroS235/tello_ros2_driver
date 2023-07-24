@@ -7,7 +7,12 @@ tello_driver:
     land_topic_name: '/land'
     takeoff_topic_name: '/takeoff'
     flip_control_topic_name: '/flip'
-
-    auto_wifi_connection: False
-    tello_ssid: 'tello01'
+    odom_topic_name: 'odom'
+    imu_topic_name: 'imu'
+    # Frame ids
+    imu_frame_id: 'imu'
+    odom_frame_id: 'odom'
+    drone_frame_id: 'tello'
+    auto_wifi_connection: false
+    tello_ssid: 'tello10'
     tello_pw: ''
