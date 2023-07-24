@@ -6,13 +6,25 @@ import numpy as np
 import av
 from cv_bridge import CvBridge
 from tellopy import Tello
+from tellopy._internal.tello import LogData
 from tello_driver import connect_to_wifi_device as ctwd
+
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 
 # ROS messages
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TransformStamped, Twist
 from std_msgs.msg import Empty, Int32
 from tello_msgs.msg import FlightData, FlipControl
+
+from tello_driver.serializers import (
+    create_tf_between_odom_drone,
+    generate_flight_data_msg,
+    generate_imu_msg,
+    generate_odom_msg,
+)
 
 
 class TelloRosWrapper(Node):
@@ -27,6 +39,9 @@ class TelloRosWrapper(Node):
     # Publishers
     _camera_image_publisher = None
     _flight_data_publisher = None
+    _odometry_publisher = None
+    _imu_publisher = None
+    _tfb = None
 
     # Subscribers
     _velocity_command_subscriber = None
@@ -50,19 +65,28 @@ class TelloRosWrapper(Node):
     throw_and_go_topic_name = "/throw_and_go"
     palm_land_topic_name = "/palm_land"
     set_att_limit_topic_name = "/set_att_limit"
+    odom_topic_name = "odom"
+    imu_topic_name = "imu"
+
+    # Frame Ids
+    odom_frame_id = "odom"
+    imu_frame_id = "imu"
+    drone_frame_id = "tello"
 
     # Flags
     _auto_connect_to_wifi = False
 
     signal_shutdown = False
+    _prev_tello_pos = (0, 0, 0)
 
     def __init__(self, node_name):
         super().__init__(node_name)
+        self.get_clock().now()
         # ROS OpenCv bridge
         self._cv_bridge = CvBridge()
 
         self.tello = Tello()
-        self.tello.set_loglevel(self.tello.LOG_WARN)
+        self.tello.set_loglevel(self.tello.LOG_INFO)
 
     def begin(self):
         self.get_logger().info("Initiating the Node...")
@@ -86,11 +110,22 @@ class TelloRosWrapper(Node):
         self._flight_data_publisher = self.create_publisher(
             FlightData, self.flight_data_topic_name, 10
         )
+        self._odometry_publisher = self.create_publisher(
+            Odometry, self.odom_topic_name, 10
+        )
+        self._imu_publisher = self.create_publisher(
+            Imu, self.imu_topic_name, 10
+        )
+        self._tfb = TransformBroadcaster(self)
 
     def _init_subscribers(self):
         self.get_logger().info("Initializing the subscribers.")
         self.tello.subscribe(
             self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback
+        )
+
+        self.tello.subscribe(
+            self.tello.EVENT_LOG_DATA, self._log_data_callback
         )
 
         self._velocity_command_subscriber = self.create_subscription(
@@ -145,6 +180,11 @@ class TelloRosWrapper(Node):
         self.declare_parameter("auto_wifi_connection", False)
         self.declare_parameter("tello_ssid", "tello01")
         self.declare_parameter("tello_pw", "")
+        self.declare_parameter("odom_topic_name", self.odom_topic_name)
+        self.declare_parameter("imu_topic_name", self.imu_topic_name)
+        self.declare_parameter("odom_frame_id", "odom")
+        self.declare_parameter("imu_frame_id", "imu")
+        self.declare_parameter("drone_frame_id", "tello")
 
         self.image_topic_name = (
             self.get_parameter("image_topic_name")
@@ -187,6 +227,26 @@ class TelloRosWrapper(Node):
         )
         self.tello_pw = (
             self.get_parameter("tello_pw").get_parameter_value().string_value
+        )
+        self.odom_frame_id = (
+            self.get_parameter("odom_frame_id")
+            .get_parameter_value()
+            .string_value
+        )
+        self.imu_frame_id = (
+            self.get_parameter("imu_frame_id")
+            .get_parameter_value()
+            .string_value
+        )
+        self.drone_frame_id = (
+            self.get_parameter("drone_frame_id")
+            .get_parameter_value()
+            .string_value
+        )
+        self.imu_topic_name = (
+            self.get_parameter("imu_topic_name")
+            .get_parameter_value()
+            .string_value
         )
 
         self.get_logger().info("Finished reading parameters!")
@@ -244,74 +304,34 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_right:
             self.tello.flip_backward_right()
 
-    def _flight_data_callback(self, event, sender, data):
-        flight_data = FlightData()
+    def _log_data_callback(self, event, sender, data: LogData):
+        # calling event and sender to ignore linter error
+        event
+        sender
 
-        # - Battery data
-        flight_data.battery_low = data.battery_low
-        flight_data.battery_lower = data.battery_lower
-        flight_data.battery_percentage = data.battery_percentage
-        flight_data.drone_battery_left = data.drone_battery_left
-        # flight_data.drone_fly_time_left = data.drone_fly_time_left
+        now = self.get_clock().now()
 
-        # =========================================================================
-
-        # - States
-        flight_data.battery_state = data.battery_state
-        flight_data.camera_state = data.camera_state
-        flight_data.electrical_machinery_state = (
-            data.electrical_machinery_state
+        odom_msg = generate_odom_msg(now, self.odom_frame_id, data)
+        imu_msg = generate_imu_msg(now, self.imu_frame_id, data)
+        tf_odom_drone = create_tf_between_odom_drone(
+            now, self.odom_frame_id, self.drone_frame_id, data
         )
-        flight_data.down_visual_state = data.down_visual_state
-        flight_data.gravity_state = data.gravity_state
-        flight_data.imu_calibration_state = data.imu_calibration_state
-        flight_data.imu_state = data.imu_state
-        flight_data.power_state = data.power_state
-        flight_data.pressure_state = data.pressure_state
-        flight_data.wind_state = data.wind_state
 
-        # =========================================================================
+        self._tfb.sendTransform(tf_odom_drone)
+        self._odometry_publisher.publish(odom_msg)
+        self._imu_publisher.publish(imu_msg)
 
-        # - Stats
-        flight_data.drone_hover = data.drone_hover
-        flight_data.em_open = data.em_open
-        flight_data.em_sky = data.em_sky
-        flight_data.em_ground = data.em_ground
-        flight_data.factory_mode = data.factory_mode
-        flight_data.fly_mode = data.fly_mode
-        # flight_data.fly_time = data.fly_time
-        flight_data.front_in = data.front_in
-        flight_data.front_lsc = data.front_lsc
-        flight_data.front_out = data.front_out
+    def _flight_data_callback(self, event, sender, data):
+        # calling event and sender to ignore linter error
+        event
+        sender
 
-        # =========================================================================
+        flight_data_msg = generate_flight_data_msg(data)
 
-        # - Sensors
-        flight_data.fly_speed = data.fly_speed
-        flight_data.east_speed = data.east_speed
-        flight_data.ground_speed = data.ground_speed
-        flight_data.height = data.height
-        flight_data.light_strength = data.light_strength
-        flight_data.north_speed = data.north_speed
-        flight_data.temperature_high = data.temperature_height
-
-        # =========================================================================
-
-        # - Other
-        flight_data.outage_recording = data.outage_recording
-        flight_data.smart_video_exit_mode = data.smart_video_exit_mode
-        # flight_data.throw_fly_timer = data.throw_fly_timer
-
-        # =========================================================================
-
-        # - WiFi
-        flight_data.wifi_disturb = data.wifi_disturb
-        flight_data.wifi_strength = data.wifi_strength
-
-        self.current_battery_percentage = flight_data.battery_percentage
+        self.current_battery_percentage = flight_data_msg.battery_percentage
 
         # - Publish Flight data
-        self._flight_data_publisher.publish(flight_data)
+        self._flight_data_publisher.publish(flight_data_msg)
 
     def _current_battery_percentage_callback(self):
         self.get_logger().info(
