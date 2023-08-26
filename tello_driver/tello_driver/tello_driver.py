@@ -77,7 +77,7 @@ class TelloRosWrapper(Node):
 
     _prev_tello_pos = (0, 0, 0)
 
-    def __init__(self, node_name):
+    def __init__(self, node_name) -> None:
         super().__init__(node_name)
         self.get_clock().now()
         # ROS OpenCv bridge
@@ -86,7 +86,7 @@ class TelloRosWrapper(Node):
         self.tello = Tello()
         self.tello.set_loglevel(self.tello.LOG_INFO)
 
-    def begin(self):
+    def begin(self) -> None:
         self.get_logger().info("Initiating the Node...")
 
         self.read_parameters()
@@ -100,7 +100,7 @@ class TelloRosWrapper(Node):
         self._start_camera_image_thread()
         self.get_logger().info("Node is ready!")
 
-    def _init_publisher(self):
+    def _init_publisher(self) -> None:
         self.get_logger().info("Initializing the publishers.")
         self._camera_image_publisher = self.create_publisher(
             Image, self._image_topic_name, 10
@@ -116,7 +116,7 @@ class TelloRosWrapper(Node):
         )
         self._tfb = TransformBroadcaster(self)
 
-    def _init_subscribers(self):
+    def _init_subscribers(self) -> None:
         self.get_logger().info("Initializing the subscribers.")
         self.tello.subscribe(
             self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback
@@ -162,14 +162,14 @@ class TelloRosWrapper(Node):
             1,
         )
 
-    def _init_timers(self):
+    def _init_timers(self) -> None:
         self.get_logger().info("Initializing the timers.")
         self._current_battery_percentage_timer = self.create_timer(
             self._battery_percentage_timer_interval,
             self._current_battery_percentage_callback,
         )
 
-    def read_parameters(self):
+    def read_parameters(self) -> None:
         self.get_logger().info("Reading parameters...")
 
         self.declare_parameter("image_topic_name", "/camera/image_raw")
@@ -252,7 +252,7 @@ class TelloRosWrapper(Node):
 
         self.get_logger().info("Finished reading parameters!")
 
-    def _start_camera_image_thread(self):
+    def _start_camera_image_thread(self) -> None:
         self._stop_request = threading.Event()
         self._video_thread = threading.Thread(
             target=self._camera_image_callback
@@ -262,32 +262,32 @@ class TelloRosWrapper(Node):
     # -------------
     # - Callbacks -
     # -------------
-    def command_velocity_callback(self, msg: Twist):
+    def command_velocity_callback(self, msg: Twist) -> None:
         self.tello.set_pitch(msg.linear.x)  # linear X
         self.tello.set_roll(-msg.linear.y)  # linear Y
         self.tello.set_throttle(msg.linear.z)  # linear Z
         self.tello.set_yaw(-msg.angular.z)  # angular Z
 
-    def _land_callback(self, msg: Empty):
+    def _land_callback(self, msg: Empty) -> None:
         msg  # remove linter error
         self.tello.land()
 
-    def _takeoff_callback(self, msg: Empty):
+    def _takeoff_callback(self, msg: Empty) -> None:
         msg  # remove linter error
         self.tello.takeoff()
 
-    def _palm_land_callback(self, msg: Empty):
+    def _palm_land_callback(self, msg: Empty) -> None:
         msg  # remove linter error
         self.tello.palm_land()
 
-    def _set_att_limit_callback(self, msg: Int32):
+    def _set_att_limit_callback(self, msg: Int32) -> None:
         self.tello.set_att_limit(msg.data)
 
-    def _throw_and_go_callback(self, msg: Empty):
+    def _throw_and_go_callback(self, msg: Empty) -> None:
         msg  # remove linter error
         self.tello.throw_and_go()
 
-    def _flip_control_callback(self, msg: FlipControl):
+    def _flip_control_callback(self, msg: FlipControl) -> None:
         if msg.flip_forward:
             self.tello.flip_forward()
         elif msg.flip_backward:
@@ -305,7 +305,7 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_right:
             self.tello.flip_backward_right()
 
-    def _log_data_callback(self, event, sender, data: LogData):
+    def _log_data_callback(self, event, sender, data: LogData) -> None:
         # calling event and sender to ignore linter error
         event
         sender
@@ -322,7 +322,7 @@ class TelloRosWrapper(Node):
         self._odometry_publisher.publish(odom_msg)
         self._imu_publisher.publish(imu_msg)
 
-    def _flight_data_callback(self, event, sender, data):
+    def _flight_data_callback(self, event, sender, data) -> None:
         # calling event and sender to ignore linter error
         event
         sender
@@ -339,7 +339,7 @@ class TelloRosWrapper(Node):
             f"Battery percentage: {self._current_battery_percentage}%"
         )
 
-    def _camera_image_callback(self):
+    def _camera_image_callback(self) -> None:
         video_stream = self.tello.get_video_stream()
         container = av.open(video_stream)
 
@@ -370,7 +370,7 @@ class TelloRosWrapper(Node):
             if self._stop_request.isSet():
                 return
 
-    def _connect_to_tello_network(self):
+    def _connect_to_tello_network(self) -> None:
         self.get_logger().info("Connecting to drone")
         if self._auto_connect_to_wifi:
             if not ctwd.connect_device(
@@ -389,7 +389,7 @@ class TelloRosWrapper(Node):
 
         self.get_logger().info(" to drone successfull")
 
-    def shutdown_rountine(self):
+    def shutdown_rountine(self) -> None:
         self.get_logger().info("Shutdown routine started")
         self.get_logger().info("Landing...")
         self.tello.land()
