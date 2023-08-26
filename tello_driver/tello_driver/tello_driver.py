@@ -9,13 +9,12 @@ from tellopy import Tello
 from tellopy._internal.tello import LogData
 from tello_driver import connect_to_wifi_device as ctwd
 
+# ROS messages
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from tf2_ros.transform_broadcaster import TransformBroadcaster
-
-# ROS messages
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import TransformStamped, Twist
+from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty, Int32
 from tello_msgs.msg import FlightData, FlipControl
 
@@ -28,13 +27,14 @@ from tello_driver.serializers import (
 
 
 class TelloRosWrapper(Node):
-    # Set inverval that will be self.get_logger().infoing the drone's battery
+    """A ROS Node that wraps the tellopy library to control the Tello drone."""
+
     _battery_percentage_timer_interval = 5  # seconds
     _frame_skip = 300
 
-    tello_ssid = None
-    tello_pw = None
-    current_battery_percentage = 0
+    _tello_ssid = None
+    _tello_pw = None
+    _current_battery_percentage = 0
 
     # Publishers
     _camera_image_publisher = None
@@ -56,39 +56,44 @@ class TelloRosWrapper(Node):
     _current_battery_percentage_timer = None
 
     # Topics
-    image_topic_name = "/camera/image_raw"
-    flight_data_topic_name = "/flight_data"
-    velocity_command_topic_name = "/cmd_vel"
-    land_topic_name = "/land"
-    takeoff_topic_name = "/takeoff"
-    flip_control_topic_name = "/flip"
-    throw_and_go_topic_name = "/throw_and_go"
-    palm_land_topic_name = "/palm_land"
-    set_att_limit_topic_name = "/set_att_limit"
-    odom_topic_name = "odom"
-    imu_topic_name = "imu"
+    _image_topic_name = "/camera/image_raw"
+    _flight_data_topic_name = "/flight_data"
+    _velocity_command_topic_name = "/cmd_vel"
+    _land_topic_name = "/land"
+    _takeoff_topic_name = "/takeoff"
+    _flip_control_topic_name = "/flip"
+    _throw_and_go_topic_name = "/throw_and_go"
+    _palm_land_topic_name = "/palm_land"
+    _set_att_limit_topic_name = "/set_att_limit"
+    _odom_topic_name = "odom"
+    _imu_topic_name = "imu"
 
     # Frame Ids
-    odom_frame_id = "odom"
-    imu_frame_id = "imu"
-    drone_frame_id = "tello"
+    _odom_frame_id = "odom"
+    _imu_frame_id = "imu"
+    _drone_frame_id = "tello"
 
     # Flags
     _auto_connect_to_wifi = False
 
-    signal_shutdown = False
     _prev_tello_pos = (0, 0, 0)
 
-    def __init__(self, node_name):
+    def __init__(self, node_name) -> None:
+        """Initialize the TelloRosWrapper class.
+
+        Args:
+            node_name (str): The name of the node.
+        """
         super().__init__(node_name)
         self.get_clock().now()
-        # ROS OpenCv bridge
         self._cv_bridge = CvBridge()
 
         self.tello = Tello()
         self.tello.set_loglevel(self.tello.LOG_INFO)
+        self.begin()
 
-    def begin(self):
+    def begin(self) -> None:
+        """Start all the necessary components of the node."""
         self.get_logger().info("Initiating the Node...")
 
         self.read_parameters()
@@ -102,23 +107,25 @@ class TelloRosWrapper(Node):
         self._start_camera_image_thread()
         self.get_logger().info("Node is ready!")
 
-    def _init_publisher(self):
+    def _init_publisher(self) -> None:
+        """Initialize all the required publishers."""
         self.get_logger().info("Initializing the publishers.")
         self._camera_image_publisher = self.create_publisher(
-            Image, self.image_topic_name, 10
+            Image, self._image_topic_name, 10
         )
         self._flight_data_publisher = self.create_publisher(
-            FlightData, self.flight_data_topic_name, 10
+            FlightData, self._flight_data_topic_name, 1
         )
         self._odometry_publisher = self.create_publisher(
-            Odometry, self.odom_topic_name, 10
+            Odometry, self._odom_topic_name, 1
         )
         self._imu_publisher = self.create_publisher(
-            Imu, self.imu_topic_name, 10
+            Imu, self._imu_topic_name, 1
         )
         self._tfb = TransformBroadcaster(self)
 
-    def _init_subscribers(self):
+    def _init_subscribers(self) -> None:
+        """Initialize all the required subscribers."""
         self.get_logger().info("Initializing the subscribers.")
         self.tello.subscribe(
             self.tello.EVENT_FLIGHT_DATA, self._flight_data_callback
@@ -130,45 +137,50 @@ class TelloRosWrapper(Node):
 
         self._velocity_command_subscriber = self.create_subscription(
             Twist,
-            self.velocity_command_topic_name,
+            self._velocity_command_topic_name,
             self.command_velocity_callback,
             1,
         )
 
         self._land_subscriber = self.create_subscription(
-            Empty, self.land_topic_name, self._land_callback, 1
+            Empty, self._land_topic_name, self._land_callback, 1
         )
         self._takeoff_subscriber = self.create_subscription(
-            Empty, self.takeoff_topic_name, self._takeoff_callback, 1
+            Empty, self._takeoff_topic_name, self._takeoff_callback, 1
         )
 
         self._flip_control_subscriber = self.create_subscription(
             FlipControl,
-            self.flip_control_topic_name,
+            self._flip_control_topic_name,
             self._flip_control_callback,
             1,
         )
         self._throw_and_go_subscriber = self.create_subscription(
-            Empty, self.throw_and_go_topic_name, self._throw_and_go_callback, 1
+            Empty,
+            self._throw_and_go_topic_name,
+            self._throw_and_go_callback,
+            1,
         )
         self._palm_land_subscriber = self.create_subscription(
-            Empty, self.palm_land_topic_name, self._palm_land_callback, 1
+            Empty, self._palm_land_topic_name, self._palm_land_callback, 1
         )
         self._set_att_limit_subscriber = self.create_subscription(
             Int32,
-            self.set_att_limit_topic_name,
+            self._set_att_limit_topic_name,
             self._set_att_limit_callback,
             1,
         )
 
-    def _init_timers(self):
+    def _init_timers(self) -> None:
+        """Initialize all the required timers."""
         self.get_logger().info("Initializing the timers.")
         self._current_battery_percentage_timer = self.create_timer(
             self._battery_percentage_timer_interval,
             self._current_battery_percentage_callback,
         )
 
-    def read_parameters(self):
+    def read_parameters(self) -> None:
+        """Read all the required parameters."""
         self.get_logger().info("Reading parameters...")
 
         self.declare_parameter("image_topic_name", "/camera/image_raw")
@@ -180,38 +192,38 @@ class TelloRosWrapper(Node):
         self.declare_parameter("auto_wifi_connection", False)
         self.declare_parameter("tello_ssid", "tello01")
         self.declare_parameter("tello_pw", "")
-        self.declare_parameter("odom_topic_name", self.odom_topic_name)
-        self.declare_parameter("imu_topic_name", self.imu_topic_name)
+        self.declare_parameter("odom_topic_name", self._odom_topic_name)
+        self.declare_parameter("imu_topic_name", self._imu_topic_name)
         self.declare_parameter("odom_frame_id", "odom")
         self.declare_parameter("imu_frame_id", "imu")
         self.declare_parameter("drone_frame_id", "tello")
 
-        self.image_topic_name = (
+        self._image_topic_name = (
             self.get_parameter("image_topic_name")
             .get_parameter_value()
             .string_value
         )
-        self.flight_data_topic_name = (
+        self._flight_data_topic_name = (
             self.get_parameter("flight_data_topic_name")
             .get_parameter_value()
             .string_value
         )
-        self.velocity_command_topic_name = (
+        self._velocity_command_topic_name = (
             self.get_parameter("velocity_command_topic_name")
             .get_parameter_value()
             .string_value
         )
-        self.land_topic_name = (
+        self._land_topic_name = (
             self.get_parameter("land_topic_name")
             .get_parameter_value()
             .string_value
         )
-        self.takeoff_topic_name = (
+        self._takeoff_topic_name = (
             self.get_parameter("takeoff_topic_name")
             .get_parameter_value()
             .string_value
         )
-        self.flip_control_topic_name = (
+        self._flip_control_topic_name = (
             self.get_parameter("flip_control_topic_name")
             .get_parameter_value()
             .string_value
@@ -222,28 +234,28 @@ class TelloRosWrapper(Node):
             .bool_value
         )
 
-        self.tello_ssid = (
+        self._tello_ssid = (
             self.get_parameter("tello_ssid").get_parameter_value().string_value
         )
-        self.tello_pw = (
+        self._tello_pw = (
             self.get_parameter("tello_pw").get_parameter_value().string_value
         )
-        self.odom_frame_id = (
+        self._odom_frame_id = (
             self.get_parameter("odom_frame_id")
             .get_parameter_value()
             .string_value
         )
-        self.imu_frame_id = (
+        self._imu_frame_id = (
             self.get_parameter("imu_frame_id")
             .get_parameter_value()
             .string_value
         )
-        self.drone_frame_id = (
+        self._drone_frame_id = (
             self.get_parameter("drone_frame_id")
             .get_parameter_value()
             .string_value
         )
-        self.imu_topic_name = (
+        self._imu_topic_name = (
             self.get_parameter("imu_topic_name")
             .get_parameter_value()
             .string_value
@@ -251,7 +263,8 @@ class TelloRosWrapper(Node):
 
         self.get_logger().info("Finished reading parameters!")
 
-    def _start_camera_image_thread(self):
+    def _start_camera_image_thread(self) -> None:
+        """Start the thread that receives the camera image from the drone."""
         self._stop_request = threading.Event()
         self._video_thread = threading.Thread(
             target=self._camera_image_callback
@@ -261,32 +274,68 @@ class TelloRosWrapper(Node):
     # -------------
     # - Callbacks -
     # -------------
-    def command_velocity_callback(self, msg: Twist):
+    def command_velocity_callback(self, msg: Twist) -> None:
+        """Callback for the velocity command subscriber.
+
+        Args:
+            msg (Twist): The message containing the velocity command.
+        """
+
         self.tello.set_pitch(msg.linear.x)  # linear X
         self.tello.set_roll(-msg.linear.y)  # linear Y
         self.tello.set_throttle(msg.linear.z)  # linear Z
         self.tello.set_yaw(-msg.angular.z)  # angular Z
 
-    def _land_callback(self, msg: Empty):
+    def _land_callback(self, msg: Empty) -> None:
+        """Callback for the land subscriber.
+
+        Args:
+            msg (Empty): The message containing the land command.
+        """
         msg  # remove linter error
         self.tello.land()
 
-    def _takeoff_callback(self, msg: Empty):
+    def _takeoff_callback(self, msg: Empty) -> None:
+        """Callback for the takeoff subscriber.
+
+        Args:
+            msg (Empty): The message containing the takeoff command.
+        """
         msg  # remove linter error
         self.tello.takeoff()
 
-    def _palm_land_callback(self, msg: Empty):
+    def _palm_land_callback(self, msg: Empty) -> None:
+        """Callback for the palm land subscriber.
+
+        Args:
+            msg (Empty): The message containing the palm land command.
+        """
         msg  # remove linter error
         self.tello.palm_land()
 
-    def _set_att_limit_callback(self, msg: Int32):
+    def _set_att_limit_callback(self, msg: Int32) -> None:
+        """Callback for the set attitude limit subscriber.
+
+        Args:
+            msg (Int32): The message containing the attitude limit.
+        """
         self.tello.set_att_limit(msg.data)
 
-    def _throw_and_go_callback(self, msg: Empty):
+    def _throw_and_go_callback(self, msg: Empty) -> None:
+        """Callback for the throw and go subscriber.
+
+        Args:
+            msg (Empty): The message containing the throw and go command.
+        """
         msg  # remove linter error
         self.tello.throw_and_go()
 
-    def _flip_control_callback(self, msg: FlipControl):
+    def _flip_control_callback(self, msg: FlipControl) -> None:
+        """Callback for the flip control subscriber.
+
+        Args:
+            msg (FlipControl): The message containing the flip command.
+        """
         if msg.flip_forward:
             self.tello.flip_forward()
         elif msg.flip_backward:
@@ -304,41 +353,45 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_right:
             self.tello.flip_backward_right()
 
-    def _log_data_callback(self, event, sender, data: LogData):
+    def _log_data_callback(self, event, sender, data: LogData) -> None:
+        """Callback for the log data subscriber from tellopy."""
         # calling event and sender to ignore linter error
         event
         sender
 
         now = self.get_clock().now()
 
-        odom_msg = generate_odom_msg(now, self.odom_frame_id, data)
-        imu_msg = generate_imu_msg(now, self.imu_frame_id, data)
+        odom_msg = generate_odom_msg(now, self._odom_frame_id, data)
+        imu_msg = generate_imu_msg(now, self._imu_frame_id, data)
         tf_odom_drone = create_tf_between_odom_drone(
-            now, self.odom_frame_id, self.drone_frame_id, data
+            now, self._odom_frame_id, self._drone_frame_id, data
         )
 
         self._tfb.sendTransform(tf_odom_drone)
         self._odometry_publisher.publish(odom_msg)
         self._imu_publisher.publish(imu_msg)
 
-    def _flight_data_callback(self, event, sender, data):
+    def _flight_data_callback(self, event, sender, data) -> None:
+        """Callback for the flight data subscriber from tellopy."""
         # calling event and sender to ignore linter error
         event
         sender
 
         flight_data_msg = generate_flight_data_msg(data)
 
-        self.current_battery_percentage = flight_data_msg.battery_percentage
+        self._current_battery_percentage = flight_data_msg.battery_percentage
 
         # - Publish Flight data
         self._flight_data_publisher.publish(flight_data_msg)
 
     def _current_battery_percentage_callback(self):
+        """Callback for the current battery percentage timer."""
         self.get_logger().info(
-            f"Battery percentage: {self.current_battery_percentage}%"
+            f"Battery percentage: {self._current_battery_percentage}%"
         )
 
-    def _camera_image_callback(self):
+    def _camera_image_callback(self) -> None:
+        """Callback for the camera image subscriber."""
         video_stream = self.tello.get_video_stream()
         container = av.open(video_stream)
 
@@ -369,14 +422,14 @@ class TelloRosWrapper(Node):
             if self._stop_request.isSet():
                 return
 
-    def _connect_to_tello_network(self):
+    def _connect_to_tello_network(self) -> None:
+        """Connect to the Tello drone network automatically."""
         self.get_logger().info("Connecting to drone")
         if self._auto_connect_to_wifi:
             if not ctwd.connect_device(
-                self.tello_ssid, self.tello_pw, verbose=False
+                self._tello_ssid, self._tello_pw, verbose=False
             ):
                 self.get_logger().error("Connection to drone unsuccessful!")
-                self.signal_shutdown = True
 
         self.tello.connect()
         from tellopy._internal import error
@@ -385,12 +438,12 @@ class TelloRosWrapper(Node):
             self.tello.wait_for_connection(5)
         except error.TelloError:
             self.get_logger().error("Connection to drone unsuccessful!")
-            self.signal_shutdown = True
             return
 
         self.get_logger().info(" to drone successfull")
 
-    def shutdown_rountine(self):
+    def shutdown_rountine(self) -> None:
+        """Shutdown routine for the node. Makes sure the drone lands first."""
         self.get_logger().info("Shutdown routine started")
         self.get_logger().info("Landing...")
         self.tello.land()
