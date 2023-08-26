@@ -11,7 +11,6 @@ def main(args=None):
 
     # - Start the node
     tello_ros_wrapper = TelloRosWrapper(NODE_NAME)
-    tello_ros_wrapper.begin()
 
     atexit.register(tello_ros_wrapper.shutdown_rountine)
 
