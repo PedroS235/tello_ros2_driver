@@ -128,7 +128,7 @@ class TelloRosWrapper(Node):
         self.tello.set_video_mode(zoom)
         self.tello.set_exposure(self._camera_exposure)
         self.tello.set_alt_limit(self._alt_limit)
-        self.tello.set_fast_mode(self._fast_mode)
+        self.tello.fast_mode = self._fast_mode
 
     def _init_publisher(self) -> None:
         """Initialize all the required publishers."""
@@ -247,7 +247,7 @@ class TelloRosWrapper(Node):
         """
         msg
         self._fast_mode = not self._fast_mode
-        self.tello.set_fast_mode(self._fast_mode)
+        self.tello.fast_mode = self._fast_mode
 
     def _camera_exposure_callback(self, msg: Int32) -> None:
         """Callback for the camera exposure subscriber.
@@ -279,6 +279,9 @@ class TelloRosWrapper(Node):
         """
         msg  # remove linter error
         self.tello.takeoff()
+        self.tello.set_alt_limit(self._alt_limit)
+        print("Altitude limit:", self.tello.get_alt_limit())
+        print("Atitude limit:", self.tello.get_att_limit())
 
     def _palm_land_callback(self, msg: Empty) -> None:
         """Callback for the palm land subscriber.
@@ -296,6 +299,7 @@ class TelloRosWrapper(Node):
             msg (Int32): The message containing the attitude limit.
         """
         self.tello.set_att_limit(msg.data)
+        self._alt_limit = msg.data
 
     def _throw_and_go_callback(self, msg: Empty) -> None:
         """Callback for the throw and go subscriber.
