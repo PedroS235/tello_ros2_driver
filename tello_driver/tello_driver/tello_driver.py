@@ -116,7 +116,7 @@ class TelloRosWrapper(Node):
         self._init_timers()
 
         self._start_camera_image_thread()
-        self.get_logger().info("Node is ready!")
+        self.get_logger().info("Tello driver node is ready!")
 
     def _setup_initial_settings(self) -> None:
         zoom = False
@@ -318,8 +318,6 @@ class TelloRosWrapper(Node):
         Args:
             msg (FlipControl): The message containing the flip command.
         """
-        # TODO: Improve this by creating a function which takes a dir string
-        # Since only one flip can be done at a time.
         if msg.flip_forward:
             self.tello.flip_forward()
         elif msg.flip_backward:
