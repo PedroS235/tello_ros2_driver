@@ -53,6 +53,7 @@ class TelloRosWrapper(Node):
 
     # Timers
     _current_battery_percentage_timer = None
+    _reset_cmd_vel_timer = None
 
     # Topics
     _image_topic_name = "camera/image_raw"
@@ -88,6 +89,8 @@ class TelloRosWrapper(Node):
         "4:3"  # Valid options: "4:3" (wider view) or "16:9" (better quality)
     )
     _camera_exposure = 0  # Valid values: 0, 1, 2
+
+    _last_cmd_vel_time = 0
 
     def __init__(self, node_name) -> None:
         """Initialize the TelloRosWrapper class.
@@ -240,6 +243,22 @@ class TelloRosWrapper(Node):
         self.tello.set_roll(-msg.linear.y)  # linear Y
         self.tello.set_throttle(msg.linear.z)  # linear Z
         self.tello.set_yaw(-msg.angular.z)  # angular Z
+
+        self._last_cmd_vel_time = self.get_clock().now().nanoseconds
+
+    def _reset_cmd_vel_callback(self) -> None:
+        """Callback for the reset cmd_vel timer.
+        If no cmd_vel is received withing 0.09 seconds, the drone will
+        stop moving.
+        """
+        if (
+            self.get_clock().now().nanoseconds - self._last_cmd_vel_time
+            > 90000
+        ):
+            self.tello.set_pitch(0)
+            self.tello.set_roll(0)
+            self.tello.set_throttle(0)
+            self.tello.set_yaw(0)
 
     def _toggle_fast_mode_callback(self, msg: Empty) -> None:
         """Callback for the toggle fast mode subscriber.
