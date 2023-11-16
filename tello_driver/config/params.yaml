@@ -9,10 +9,19 @@ tello_driver:
     flip_control_topic_name: '/flip'
     odom_topic_name: 'odom'
     imu_topic_name: 'imu'
+
     # Frame ids
     imu_frame_id: 'imu'
     odom_frame_id: 'odom'
     drone_frame_id: 'tello'
     auto_wifi_connection: false
+
+    # Wifi Setup
     tello_ssid: 'tello10'
     tello_pw: ''
+
+    # Settings
+    alt_limit: 30 #[meters] Altitude limit (default: 30m)
+    fast_mode: false
+    video_mode: '4:3' # Valid options are "4:3" (wider view) or "16:9" (better quality)
+    camera_exposure: 0 # Valid values: 0, 1, 2
