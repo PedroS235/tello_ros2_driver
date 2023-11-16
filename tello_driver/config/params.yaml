@@ -1,14 +1,16 @@
 tello_driver:
   ros__parameters:
     # Topics
-    image_topic_name: '/camera/image_raw'
-    flight_data_topic_name: '/flight_data'
-    velocity_command_topic_name: '/cmd_vel'
-    land_topic_name: '/land'
-    takeoff_topic_name: '/takeoff'
-    flip_control_topic_name: '/flip'
+    image_topic_name: 'camera/image_raw'
+    flight_data_topic_name: 'flight_data'
+    velocity_command_topic_name: 'cmd_vel'
+    land_topic_name: 'land'
+    takeoff_topic_name: 'takeoff'
+    flip_control_topic_name: 'flip'
     odom_topic_name: 'odom'
     imu_topic_name: 'imu'
+    toggle_fast_mode_topic_name: 'toggle_fast_mode'
+    camera_exposure_topic_name: 'camera/exposure'
 
     # Frame ids
     imu_frame_id: 'imu'

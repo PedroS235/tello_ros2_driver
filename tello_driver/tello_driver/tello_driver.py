@@ -55,17 +55,19 @@ class TelloRosWrapper(Node):
     _current_battery_percentage_timer = None
 
     # Topics
-    _image_topic_name = "/camera/image_raw"
-    _flight_data_topic_name = "/flight_data"
-    _velocity_command_topic_name = "/cmd_vel"
-    _land_topic_name = "/land"
-    _takeoff_topic_name = "/takeoff"
-    _flip_control_topic_name = "/flip"
-    _throw_and_go_topic_name = "/throw_and_go"
-    _palm_land_topic_name = "/palm_land"
-    _set_alt_limit_topic_name = "/set_att_limit"
+    _image_topic_name = "camera/image_raw"
+    _flight_data_topic_name = "flight_data"
+    _velocity_command_topic_name = "cmd_vel"
+    _land_topic_name = "land"
+    _takeoff_topic_name = "takeoff"
+    _flip_control_topic_name = "flip"
+    _throw_and_go_topic_name = "throw_and_go"
+    _palm_land_topic_name = "palm_land"
+    _set_alt_limit_topic_name = "set_att_limit"
     _odom_topic_name = "odom"
     _imu_topic_name = "imu"
+    _toggle_fast_mode_topic_name = "toggle_fast_mode"
+    _camera_exposure_topic_name = "camera/exposure"
 
     # Frame Ids
     _odom_frame_id = "odom"
@@ -76,8 +78,8 @@ class TelloRosWrapper(Node):
     _auto_connect_to_wifi = False
 
     # Wifi Setup
-    _tello_ssid = None
-    _tello_pw = None
+    _tello_ssid = "tello-XXXXXX"
+    _tello_pw = ""
 
     # Settings
     _alt_limit = 30
@@ -196,14 +198,14 @@ class TelloRosWrapper(Node):
 
         self._toggle_fast_mode_subscriber = self.create_subscription(
             Empty,
-            "/toggle_fast_mode",
+            self._toggle_fast_mode_topic_name,
             self._toggle_fast_mode_callback,
             1,
         )
 
         self.create_subscription(
             Int32,
-            "/camera_exposure",
+            self._camera_exposure_topic_name,
             self._camera_exposure_callback,
             1,
         )
@@ -421,24 +423,32 @@ class TelloRosWrapper(Node):
         """Read all the required parameters."""
         self.get_logger().info("Reading parameters...")
 
-        self.declare_parameter("image_topic_name", "/camera/image_raw")
-        self.declare_parameter("flight_data_topic_name", "flight_data")
-        self.declare_parameter("velocity_command_topic_name", "/cmd_vel")
-        self.declare_parameter("land_topic_name", "/land")
-        self.declare_parameter("takeoff_topic_name", "/takeoff")
-        self.declare_parameter("flip_control_topic_name", "/flip")
-        self.declare_parameter("auto_wifi_connection", False)
-        self.declare_parameter("tello_ssid", "tello01")
-        self.declare_parameter("tello_pw", "")
+        self.declare_parameter("image_topic_name", self._image_topic_name)
+        self.declare_parameter(
+            "flight_data_topic_name", self._flight_data_topic_name
+        )
+        self.declare_parameter(
+            "velocity_command_topic_name", self._velocity_command_topic_name
+        )
+        self.declare_parameter("land_topic_name", self._land_topic_name)
+        self.declare_parameter("takeoff_topic_name", self._takeoff_topic_name)
+        self.declare_parameter(
+            "flip_control_topic_name", self._flip_control_topic_name
+        )
+        self.declare_parameter(
+            "auto_wifi_connection", self._auto_connect_to_wifi
+        )
+        self.declare_parameter("tello_ssid", self._tello_ssid)
+        self.declare_parameter("tello_pw", self._tello_pw)
         self.declare_parameter("odom_topic_name", self._odom_topic_name)
         self.declare_parameter("imu_topic_name", self._imu_topic_name)
-        self.declare_parameter("odom_frame_id", "odom")
-        self.declare_parameter("imu_frame_id", "imu")
-        self.declare_parameter("drone_frame_id", "tello")
-        self.declare_parameter("fast_mode", False)
-        self.declare_parameter("video_mode", "4:3")
-        self.declare_parameter("camera_exposure", 0)
-        self.declare_parameter("alt_limit", 30)
+        self.declare_parameter("odom_frame_id", self._odom_frame_id)
+        self.declare_parameter("imu_frame_id", self._imu_frame_id)
+        self.declare_parameter("drone_frame_id", self._drone_frame_id)
+        self.declare_parameter("fast_mode", self._fast_mode)
+        self.declare_parameter("video_mode", self._video_mode)
+        self.declare_parameter("camera_exposure", self._camera_exposure)
+        self.declare_parameter("alt_limit", self._alt_limit)
 
         self._image_topic_name = (
             self.get_parameter("image_topic_name")
