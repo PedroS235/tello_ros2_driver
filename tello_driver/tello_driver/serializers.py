@@ -4,8 +4,8 @@ from nav_msgs.msg import Odometry
 
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Imu
-from tello_msgs.msg import FlightData
-from tellopy._internal.tello import LogData
+from tello_msgs.msg import FlightStats
+from tellopy._internal.tello import LogData, FlightData
 
 
 def generate_odom_msg(
@@ -16,15 +16,10 @@ def generate_odom_msg(
     msg.header.stamp = time.to_msg()
     msg.header.frame_id = odom_frame_id
 
-    # odom_msg.pose.pose.position.x = data.mvo.pos_x / 10
-    # odom_msg.pose.pose.position.y = -data.mvo.pos_y / 10
-    # odom_msg.pose.pose.position.z = data.mvo.pos_z / 10
-
-    # Sending 0 instead for the position since the one coming from drone is
-    # not accurate
-    msg.pose.pose.position.x = 0.0
-    msg.pose.pose.position.y = 0.0
-    msg.pose.pose.position.z = 0.0
+    # Note that this pose is very inaccurate.
+    msg.pose.pose.position.x = data.mvo.pos_x
+    msg.pose.pose.position.y = -data.mvo.pos_y
+    msg.pose.pose.position.z = data.mvo.pos_z
 
     msg.pose.pose.orientation.x = data.imu.q1
     msg.pose.pose.orientation.y = -data.imu.q2
@@ -69,15 +64,10 @@ def create_tf_between_odom_drone(
     tf_odom_drone.header.frame_id = odom_frame_id
     tf_odom_drone._child_frame_id = drone_frame_id
 
-    # tf_odom_drone.transform.translation.x = data.mvo.pos_x / 10
-    # tf_odom_drone.transform.translation.y = -data.mvo.pos_y / 10
-    # tf_odom_drone.transform.translation.z = data.mvo.pos_z / 10
-
-    # Sending 0 instead for the position since the one coming from drone is
-    # not accurate
-    tf_odom_drone.transform.translation.x = 0.0
-    tf_odom_drone.transform.translation.y = 0.0
-    tf_odom_drone.transform.translation.z = 0.0
+    # Note that this pose is very inaccurate.
+    tf_odom_drone.transform.translation.x = data.mvo.pos_x
+    tf_odom_drone.transform.translation.y = -data.mvo.pos_y
+    tf_odom_drone.transform.translation.z = data.mvo.pos_z
 
     tf_odom_drone.transform.rotation.x = data.imu.q1
     tf_odom_drone.transform.rotation.y = -data.imu.q2
@@ -87,8 +77,8 @@ def create_tf_between_odom_drone(
     return tf_odom_drone
 
 
-def generate_flight_data_msg(data: FlightData) -> FlightData:
-    msg = FlightData()
+def generate_flight_data_msg(data: FlightData) -> FlightStats:
+    msg = FlightStats()
 
     # - Battery data
     msg.battery_low = data.battery_low
