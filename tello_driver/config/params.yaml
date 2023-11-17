@@ -19,7 +19,7 @@ tello_driver:
     auto_wifi_connection: false
 
     # Wifi Setup
-    tello_ssid: 'tello10'
+    tello_ssid: ''
     tello_pw: ''
 
     # Settings
