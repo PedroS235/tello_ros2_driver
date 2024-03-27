@@ -300,6 +300,41 @@ class TelloRosWrapper(Node):
             msg (Empty): The message containing the land command.
         """
         msg  # type: ignore
+        self.tello.land()
+
+    def _takeoff_callback(self, msg: Empty) -> None:
+        """Callback for the takeoff subscriber.
+        Args:
+            msg (Empty): The message containing the takeoff command.
+        """
+        msg  # type: ignore
+        self.tello.takeoff()
+        self.tello.set_alt_limit(self._alt_limit)
+        print("Altitude limit:", self.tello.get_alt_limit())
+        print("Atitude limit:", self.tello.get_att_limit())
+
+    def _palm_land_callback(self, msg: Empty) -> None:
+        """Callback for the palm land subscriber.
+        Args:
+            msg (Empty): The message containing the palm land command.
+        """
+        msg  # type: ignore
+        self.tello.palm_land()
+
+    def _set_alt_limit_callback(self, msg: Int32) -> None:
+        """Callback for the set attitude limit subscriber.
+        Args:
+            msg (Int32): The message containing the attitude limit.
+        """
+        self.tello.set_att_limit(msg.data)
+        self._alt_limit = msg.data
+
+    def _throw_and_go_callback(self, msg: Empty) -> None:
+        """Callback for the throw and go subscriber.
+        Args:
+            msg (Empty): The message containing the throw and go command.
+        """
+        msg  # type: ignore
         self.tello.throw_and_go()
 
     def _flip_control_callback(self, msg: FlipControl) -> None:
@@ -355,6 +390,7 @@ class TelloRosWrapper(Node):
         # calling event and sender to ignore linter error
         event  # type: ignore
         sender  # type: ignore
+        print(sender)
 
         flight_data_msg = generate_flight_data_msg(data)
 
