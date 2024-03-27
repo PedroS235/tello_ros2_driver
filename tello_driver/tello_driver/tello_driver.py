@@ -89,6 +89,7 @@ class TelloRosWrapper(Node):
         "4:3"  # Valid options: "4:3" (wider view) or "16:9" (better quality)
     )
     _camera_exposure = 0  # Valid values: 0, 1, 2
+    _image_size = (640, 480)
 
     _last_cmd_vel_time = 0
 
@@ -404,11 +405,15 @@ class TelloRosWrapper(Node):
 
             # Reduced image size to have less delay
             image = cv2.resize(
-                image, (960, 720), interpolation=cv2.INTER_LINEAR
+                image,
+                (self._image_size[0], self._image_size[1]),
+                interpolation=cv2.INTER_LINEAR,
             )
 
             # convert OpenCV image => ROS Image message
             image = self._cv_bridge.cv2_to_imgmsg(image, "rgb8")
+            image.header.stamp = self.get_clock().now().to_msg()
+            image.header.frame_id = "tello_front_camera"
 
             self._camera_image_publisher.publish(image)
 
