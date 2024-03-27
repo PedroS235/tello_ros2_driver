@@ -323,7 +323,7 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_left:
             self.tello.flip_backleft()
         elif msg.flip_back_right:
-            self.tello.flip_back_right()
+            self.tello.flip_backright()
 
     def _log_data_callback(self, event: Event, sender, data: LogData) -> None:
         """Callback for the log data subscriber from tellopy."""
