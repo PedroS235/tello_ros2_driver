@@ -487,6 +487,9 @@ class TelloRosWrapper(Node):
         self.declare_parameter("video_mode", self._video_mode)
         self.declare_parameter("camera_exposure", self._camera_exposure)
         self.declare_parameter("alt_limit", self._alt_limit)
+        self.declare_parameter(
+            "image_size", f"{self._image_size[0]}x{self._image_size[1]}"
+        )
 
         self._image_topic_name = (
             self.get_parameter("image_topic_name")
@@ -565,6 +568,26 @@ class TelloRosWrapper(Node):
         self._alt_limit = (
             self.get_parameter("alt_limit").get_parameter_value().integer_value
         )
+
+        img_size = (
+            self.get_parameter("image_size")
+            .get_parameter_value()
+            .string_value.split("x")
+        )
+
+        try:
+            img_size = tuple(map(int, img_size))
+        except ValueError:
+            self.get_logger().warn(
+                "Invalid image size! Using default value. It should be [width]x[height]"
+            )
+
+        if isinstance(img_size, tuple) and len(img_size) == 2:
+            self._image_size = img_size
+        else:
+            self.get_logger().warn(
+                "Invalid image size! Using default value. It should be [width]x[height]"
+            )
 
         self.get_logger().info("Finished reading parameters!")
 
