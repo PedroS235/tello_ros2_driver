@@ -6,7 +6,7 @@ package_name = "tello_driver"
 
 setup(
     name=package_name,
-    version="0.4.0",
+    version="0.6.0",
     packages=[package_name],
     data_files=[
         (
