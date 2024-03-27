@@ -1,12 +1,17 @@
 import time
-from rclpy.node import Node
+from typing import Optional
 import threading
+from rclpy.node import Node
 import cv2
 import numpy as np
 import av
 from cv_bridge import CvBridge
+from rclpy.publisher import Publisher
+from rclpy.subscription import Subscription
+from rclpy.timer import Timer
 from tellopy import Tello
-from tellopy._internal.tello import LogData
+from tellopy._internal.event import Event
+from tellopy._internal.tello import FlightData, LogData
 from tello_driver import connect_to_wifi_device as ctwd
 
 # ROS messages
@@ -29,71 +34,71 @@ from tello_driver.serializers import (
 class TelloRosWrapper(Node):
     """A ROS Node that wraps the tellopy library to control the Tello drone."""
 
-    _battery_percentage_timer_interval = 5  # seconds
+    _battery_percentage_timer_interval: int = 5  # seconds
 
-    _current_battery_percentage = 0
+    _current_battery_percentage: int = 0
 
     # Publishers
-    _camera_image_publisher = None
-    _flight_data_publisher = None
-    _odometry_publisher = None
-    _imu_publisher = None
-    _tfb = None
+    _camera_image_publisher: Optional[Publisher] = None
+    _flight_data_publisher: Optional[Publisher] = None
+    _odometry_publisher: Optional[Publisher] = None
+    _imu_publisher: Optional[Publisher] = None
+    _tfb: Optional[TransformBroadcaster] = None
 
     # Subscribers
-    _velocity_command_subscriber = None
-    _land_subscriber = None
-    _takeoff_subscriber = None
-    _flip_control_subscriber = None
-    _throw_and_go_subscriber = None
-    _palm_land_subscriber = None
-    _set_alt_limit_subscriber = None
-    _toggle_fast_mode_subscriber = None
-    _camera_exposure_subscriber = None
+    _velocity_command_subscriber: Optional[Subscription] = None
+    _land_subscriber: Optional[Subscription] = None
+    _takeoff_subscriber: Optional[Subscription] = None
+    _flip_control_subscriber: Optional[Subscription] = None
+    _throw_and_go_subscriber: Optional[Subscription] = None
+    _palm_land_subscriber: Optional[Subscription] = None
+    _set_alt_limit_subscriber: Optional[Subscription] = None
+    _toggle_fast_mode_subscriber: Optional[Subscription] = None
+    _camera_exposure_subscriber: Optional[Subscription] = None
 
     # Timers
-    _current_battery_percentage_timer = None
-    _reset_cmd_vel_timer = None
+    _current_battery_percentage_timer: Optional[Timer] = None
+    _reset_cmd_vel_timer: Optional[Timer] = None
 
     # Topics
-    _image_topic_name = "camera/image_raw"
-    _flight_data_topic_name = "flight_data"
-    _velocity_command_topic_name = "cmd_vel"
-    _land_topic_name = "land"
-    _takeoff_topic_name = "takeoff"
-    _flip_control_topic_name = "flip"
-    _throw_and_go_topic_name = "throw_and_go"
-    _palm_land_topic_name = "palm_land"
-    _set_alt_limit_topic_name = "set_att_limit"
-    _odom_topic_name = "odom"
-    _imu_topic_name = "imu"
-    _toggle_fast_mode_topic_name = "toggle_fast_mode"
-    _camera_exposure_topic_name = "camera/exposure"
+    _image_topic_name: str = "camera/image_raw"
+    _flight_data_topic_name: str = "flight_data"
+    _velocity_command_topic_name: str = "cmd_vel"
+    _land_topic_name: str = "land"
+    _takeoff_topic_name: str = "takeoff"
+    _flip_control_topic_name: str = "flip"
+    _throw_and_go_topic_name: str = "throw_and_go"
+    _palm_land_topic_name: str = "palm_land"
+    _set_alt_limit_topic_name: str = "set_att_limit"
+    _odom_topic_name: str = "odom"
+    _imu_topic_name: str = "imu"
+    _toggle_fast_mode_topic_name: str = "toggle_fast_mode"
+    _camera_exposure_topic_name: str = "camera/exposure"
 
     # Frame Ids
-    _odom_frame_id = "odom"
-    _imu_frame_id = "imu"
-    _drone_frame_id = "tello"
+    _odom_frame_id: str = "odom"
+    _imu_frame_id: str = "imu"
+    _drone_frame_id: str = "tello"
 
     # Flags
-    _auto_connect_to_wifi = False
+    _auto_connect_to_wifi: bool = False
 
     # Wifi Setup
-    _tello_ssid = "tello-XXXXXX"
-    _tello_pw = ""
+    _tello_ssid: str = "tello-XXXXXX"
+    _tello_pw: str = ""
 
     # Settings
-    _alt_limit = 30
-    _fast_mode = False
-    _video_mode = (
+    _alt_limit: int = 30
+    _fast_mode: bool = False
+    _video_mode: str = (
         "4:3"  # Valid options: "4:3" (wider view) or "16:9" (better quality)
     )
-    _camera_exposure = 0  # Valid values: 0, 1, 2
-    _image_size = (640, 480)
+    _camera_exposure: int = 0  # Valid values: 0, 1, 2
+    _image_size: tuple[int, int] = (640, 480)
 
-    _last_cmd_vel_time = 0
+    _last_cmd_vel_time: int = 0
 
-    def __init__(self, node_name) -> None:
+    def __init__(self, node_name: str) -> None:
         """Initialize the TelloRosWrapper class.
 
         Args:
@@ -222,6 +227,10 @@ class TelloRosWrapper(Node):
             self._current_battery_percentage_callback,
         )
 
+        self._reset_cmd_vel_timer = self.create_timer(
+            0.016, self._reset_cmd_vel_callback
+        )
+
     def _start_camera_image_thread(self) -> None:
         """Start the thread that receives the camera image from the drone."""
         self._stop_request = threading.Event()
@@ -267,7 +276,7 @@ class TelloRosWrapper(Node):
         Args:
             msg (Empty): The message containing the toggle fast mode command.
         """
-        msg
+        msg  # type: ignore
         self._fast_mode = not self._fast_mode
         self.tello.fast_mode = self._fast_mode
 
@@ -290,46 +299,7 @@ class TelloRosWrapper(Node):
         Args:
             msg (Empty): The message containing the land command.
         """
-        msg  # remove linter error
-        self.tello.land()
-
-    def _takeoff_callback(self, msg: Empty) -> None:
-        """Callback for the takeoff subscriber.
-
-        Args:
-            msg (Empty): The message containing the takeoff command.
-        """
-        msg  # remove linter error
-        self.tello.takeoff()
-        self.tello.set_alt_limit(self._alt_limit)
-        print("Altitude limit:", self.tello.get_alt_limit())
-        print("Atitude limit:", self.tello.get_att_limit())
-
-    def _palm_land_callback(self, msg: Empty) -> None:
-        """Callback for the palm land subscriber.
-
-        Args:
-            msg (Empty): The message containing the palm land command.
-        """
-        msg  # remove linter error
-        self.tello.palm_land()
-
-    def _set_alt_limit_callback(self, msg: Int32) -> None:
-        """Callback for the set attitude limit subscriber.
-
-        Args:
-            msg (Int32): The message containing the attitude limit.
-        """
-        self.tello.set_att_limit(msg.data)
-        self._alt_limit = msg.data
-
-    def _throw_and_go_callback(self, msg: Empty) -> None:
-        """Callback for the throw and go subscriber.
-
-        Args:
-            msg (Empty): The message containing the throw and go command.
-        """
-        msg  # remove linter error
+        msg  # type: ignore
         self.tello.throw_and_go()
 
     def _flip_control_callback(self, msg: FlipControl) -> None:
@@ -353,13 +323,13 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_left:
             self.tello.flip_backleft()
         elif msg.flip_back_right:
-            self.tello.flip_backward_right()
+            self.tello.flip_back_right()
 
-    def _log_data_callback(self, event, sender, data: LogData) -> None:
+    def _log_data_callback(self, event: Event, sender, data: LogData) -> None:
         """Callback for the log data subscriber from tellopy."""
         # calling event and sender to ignore linter error
-        event
-        sender
+        event  # type: ignore
+        sender  # type: ignore
 
         now = self.get_clock().now()
 
@@ -369,22 +339,30 @@ class TelloRosWrapper(Node):
             now, self._odom_frame_id, self._drone_frame_id, data
         )
 
-        self._tfb.sendTransform(tf_odom_drone)
-        self._odometry_publisher.publish(odom_msg)
-        self._imu_publisher.publish(imu_msg)
+        if (
+            self._odometry_publisher is not None
+            and self._imu_publisher is not None
+            and self._tfb is not None
+        ):
+            self._tfb.sendTransform(tf_odom_drone)
+            self._odometry_publisher.publish(odom_msg)
+            self._imu_publisher.publish(imu_msg)
 
-    def _flight_data_callback(self, event, sender, data) -> None:
+    def _flight_data_callback(
+        self, event: Event, sender, data: FlightData
+    ) -> None:
         """Callback for the flight data subscriber from tellopy."""
         # calling event and sender to ignore linter error
-        event
-        sender
+        event  # type: ignore
+        sender  # type: ignore
 
         flight_data_msg = generate_flight_data_msg(data)
 
         self._current_battery_percentage = flight_data_msg.battery_percentage
 
         # - Publish Flight data
-        self._flight_data_publisher.publish(flight_data_msg)
+        if self._flight_data_publisher is not None:
+            self._flight_data_publisher.publish(flight_data_msg)
 
     def _current_battery_percentage_callback(self):
         """Callback for the current battery percentage timer."""
@@ -399,9 +377,9 @@ class TelloRosWrapper(Node):
 
         self.get_logger().info("video stream is starting")
 
-        for frame in container.decode(video=0):
+        for frame in container.decode(video=0):  # type: ignore
             # convert PyAV frame => PIL image => OpenCV image
-            image = np.array(frame.to_image())
+            image = np.array(frame.to_image())  # type: ignore
 
             # Reduced image size to have less delay
             image = cv2.resize(
@@ -415,7 +393,8 @@ class TelloRosWrapper(Node):
             image.header.stamp = self.get_clock().now().to_msg()
             image.header.frame_id = "tello_front_camera"
 
-            self._camera_image_publisher.publish(image)
+            if self._camera_image_publisher is not None:
+                self._camera_image_publisher.publish(image)
 
             # check for normal shutdown
             if self._stop_request.isSet():
