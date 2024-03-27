@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2024-03-27
+
+### 🚀 Features
+
+- Allo image_size to be used as a parameter
+- Add a params_file argument
+
+### 🐛 Bug Fixes
+
+- Bring back delted code
+- Add missing type to sender parameter
+
+### 🚜 Refactor
+
+- Remove debug print
+
+### ⚙️ Miscellaneous Tasks
+
+- Add changelog and cliff config file
+- Bump version
+
 ## [0.4.0] - 2024-03-27
 
 ### 🚀 Features
