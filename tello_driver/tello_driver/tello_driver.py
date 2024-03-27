@@ -228,7 +228,7 @@ class TelloRosWrapper(Node):
         )
 
         self._reset_cmd_vel_timer = self.create_timer(
-            0.016, self._reset_cmd_vel_callback
+            0.05, self._reset_cmd_vel_callback
         )
 
     def _start_camera_image_thread(self) -> None:
@@ -261,10 +261,8 @@ class TelloRosWrapper(Node):
         If no cmd_vel is received withing 0.09 seconds, the drone will
         stop moving.
         """
-        if (
-            self.get_clock().now().nanoseconds - self._last_cmd_vel_time
-            > 90000
-        ):
+        delta = self.get_clock().now().nanoseconds - self._last_cmd_vel_time
+        if delta >= 300000000:
             self.tello.set_pitch(0)
             self.tello.set_roll(0)
             self.tello.set_throttle(0)
