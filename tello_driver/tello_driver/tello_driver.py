@@ -392,7 +392,6 @@ class TelloRosWrapper(Node):
         # calling event and sender to ignore linter error
         event  # type: ignore
         sender  # type: ignore
-        print(sender)
 
         flight_data_msg = generate_flight_data_msg(data)
 
