@@ -360,7 +360,9 @@ class TelloRosWrapper(Node):
         elif msg.flip_back_right:
             self.tello.flip_backright()
 
-    def _log_data_callback(self, event: Event, sender, data: LogData) -> None:
+    def _log_data_callback(
+        self, event: Event, sender: Tello, data: LogData
+    ) -> None:
         """Callback for the log data subscriber from tellopy."""
         # calling event and sender to ignore linter error
         event  # type: ignore
@@ -384,7 +386,7 @@ class TelloRosWrapper(Node):
             self._imu_publisher.publish(imu_msg)
 
     def _flight_data_callback(
-        self, event: Event, sender, data: FlightData
+        self, event: Event, sender: Tello, data: FlightData
     ) -> None:
         """Callback for the flight data subscriber from tellopy."""
         # calling event and sender to ignore linter error
