@@ -18,13 +18,14 @@ from tello_driver import connect_to_wifi_device as ctwd
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from tf2_ros.transform_broadcaster import TransformBroadcaster
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, BatteryState
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty, Int32
 from tello_msgs.msg import FlightStats, FlipControl
 
 from tello_driver.serializers import (
     create_tf_between_odom_drone,
+    generate_battery_state_msg,
     generate_flight_data_msg,
     generate_imu_msg,
     generate_odom_msg,
@@ -43,6 +44,7 @@ class TelloRosWrapper(Node):
     _flight_data_publisher: Optional[Publisher] = None
     _odometry_publisher: Optional[Publisher] = None
     _imu_publisher: Optional[Publisher] = None
+    _battery_state_publisher: Optional[Publisher] = None
     _tfb: Optional[TransformBroadcaster] = None
 
     # Subscribers
@@ -74,6 +76,7 @@ class TelloRosWrapper(Node):
     _imu_topic_name: str = "imu"
     _toggle_fast_mode_topic_name: str = "toggle_fast_mode"
     _camera_exposure_topic_name: str = "camera/exposure"
+    _battery_state_topic_name: str = "battery_state"
 
     # Frame Ids
     _odom_frame_id: str = "odom"
@@ -155,6 +158,9 @@ class TelloRosWrapper(Node):
         )
         self._imu_publisher = self.create_publisher(
             Imu, self._imu_topic_name, 1
+        )
+        self._battery_state_publisher = self.create_publisher(
+            BatteryState, self._battery_state_topic_name, 1
         )
         self._tfb = TransformBroadcaster(self)
 
@@ -392,12 +398,19 @@ class TelloRosWrapper(Node):
         sender  # type: ignore
 
         flight_data_msg = generate_flight_data_msg(data)
+        battey_state_msg = generate_battery_state_msg(
+            self.get_clock().now(), data
+        )
 
         self._current_battery_percentage = flight_data_msg.battery_percentage
 
         # - Publish Flight data
         if self._flight_data_publisher is not None:
             self._flight_data_publisher.publish(flight_data_msg)
+
+        # - Publish Battery state
+        if self._battery_state_publisher is not None:
+            self._battery_state_publisher.publish(battey_state_msg)
 
     def _current_battery_percentage_callback(self):
         """Callback for the current battery percentage timer."""

@@ -3,7 +3,7 @@ from rclpy.time import Time
 from nav_msgs.msg import Odometry
 
 from geometry_msgs.msg import TransformStamped
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import BatteryState, Imu
 from tello_msgs.msg import FlightStats
 from tellopy._internal.tello import LogData, FlightData
 
@@ -75,6 +75,23 @@ def create_tf_between_odom_drone(
     tf_odom_drone.transform.rotation.w = data.imu.q0
 
     return tf_odom_drone
+
+
+def generate_battery_state_msg(time: Time, data: FlightData) -> BatteryState:
+    msg = BatteryState()
+    # NOTE: A tello battery is a 1S HV battery, so 4.35V is the max voltage
+    max_v = 4.35
+    min_v = 3.30  # Assumed value
+
+    msg.percentage = float(data.battery_percentage)
+    msg.voltage = min_v + (max_v - min_v) * data.battery_percentage / 100.0
+    msg.cell_voltage = [msg.voltage]
+    msg.header.stamp = time.to_msg()
+    msg.design_capacity = 1.100  # 1.1 Ah
+
+    # TODO: Possibly add the battery state. Not clear what the values are for the moment
+
+    return msg
 
 
 def generate_flight_data_msg(data: FlightData) -> FlightStats:
