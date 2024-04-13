@@ -1,4 +1,4 @@
-# Tello ROS Wrapper
+# Tello ROS2 Wrapper
 
 ## Introduction
 

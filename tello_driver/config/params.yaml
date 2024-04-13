@@ -1,29 +1,30 @@
 tello_driver:
   ros__parameters:
     # Topics
-    image_topic_name: 'camera/image_raw'
-    flight_data_topic_name: 'flight_data'
-    velocity_command_topic_name: 'cmd_vel'
-    land_topic_name: 'land'
-    takeoff_topic_name: 'takeoff'
-    flip_control_topic_name: 'flip'
-    odom_topic_name: 'odom'
-    imu_topic_name: 'imu'
-    toggle_fast_mode_topic_name: 'toggle_fast_mode'
-    camera_exposure_topic_name: 'camera/exposure'
+    image_topic_name: "camera/image_raw"
+    flight_data_topic_name: "flight_data"
+    velocity_command_topic_name: "cmd_vel"
+    land_topic_name: "land"
+    takeoff_topic_name: "takeoff"
+    flip_control_topic_name: "flip"
+    odom_topic_name: "odom"
+    imu_topic_name: "imu"
+    toggle_fast_mode_topic_name: "toggle_fast_mode"
+    camera_exposure_topic_name: "camera/exposure"
 
     # Frame ids
-    imu_frame_id: 'imu'
-    odom_frame_id: 'odom'
-    drone_frame_id: 'tello'
+    imu_frame_id: "imu"
+    odom_frame_id: "odom"
+    drone_frame_id: "tello"
     auto_wifi_connection: false
 
     # Wifi Setup
-    tello_ssid: ''
-    tello_pw: ''
+    tello_ssid: ""
+    tello_pw: ""
 
     # Settings
     alt_limit: 30 #[meters] Altitude limit (default: 30m)
     fast_mode: false
-    video_mode: '4:3' # Valid options are "4:3" (wider view) or "16:9" (better quality)
+    video_mode: "4:3" # Valid options are "4:3" (wider view) or "16:9" (better quality)
     camera_exposure: 0 # Valid values: 0, 1, 2
+    image_size: "640x480"
