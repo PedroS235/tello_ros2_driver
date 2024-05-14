@@ -37,7 +37,8 @@ velocity, building a bridge between ROS and the `tellopy` Python library.
 | `/camera/image_raw` | `sensor_msgs/msg/Image`      | Camera images from the drone.                                          |
 | `/flight_data`      | `tello_msgs/msg/FlightStats` | Flight data and statistics.                                            |
 | `/imu`              | `sensor_msgs/msg/Imu`        | IMU data of the drone.                                                 |
-| `/odom`             | `nav_msgs/msg/Odometry`      | Odometry information. _(It is very inacurate. Not adviced to be used)_ |
+| `/odom`             | `nav_msgs/msg/Odometry`      | Odometry information. _(It is very inacurate. Should be avoided)_ |
+| `/battery_state` | `sensor_msgs/BatteryState` | Battery State information. (Percentage is from 0-100%)
 
 ## ROS Parameters
 
